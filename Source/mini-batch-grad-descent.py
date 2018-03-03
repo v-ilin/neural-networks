@@ -1,4 +1,3 @@
-from decimal import Decimal
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,6 +36,7 @@ def nonlin(x, deriv=False):
         return 1 / (1 + np.exp(-x))
     except Warning as e:
         raise e
+
 
 batch_size = 64
 epoch_count = 50
