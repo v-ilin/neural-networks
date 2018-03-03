@@ -1,4 +1,4 @@
-from numpy import inf
+from decimal import Decimal
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,24 +38,24 @@ def nonlin(x, deriv=False):
     except Warning as e:
         raise e
 
-batch_size = 50
+batch_size = 64
 epoch_count = 50
 
-E = 0.7
+E = 0.1
 alpha = 0.3
 
-np.random.seed(1)
+# np.random.seed(1)
 
-synapse_0 = 2 * np.random.random((3072, 32)) - 1
-synapse_1 = 2 * np.random.random((32, 10)) - 1
+synapse_0 = 2 * np.random.random((3072, 1024)) - 1
+synapse_1 = 2 * np.random.random((1024, 10)) - 1
 
-prev_synapse_0_delta = np.zeros((3072, 32))
-prev_synapse_1_delta = np.zeros((32, 10))
+prev_synapse_0_delta = np.zeros((3072, 1024))
+prev_synapse_1_delta = np.zeros((1024, 10))
 
 errors = np.zeros(epoch_count);
 
-synapse_0_delta_batch = np.zeros((3072, 32))
-synapse_1_delta_batch = np.zeros((32, 10))
+synapse_0_delta_batch = np.zeros((3072, 1024))
+synapse_1_delta_batch = np.zeros((1024, 10))
 
 for i in xrange(epoch_count):
 
@@ -72,23 +72,23 @@ for i in xrange(epoch_count):
             y_local = y[j]  # 1x10
             l0 = np.array(X)[np.newaxis]/float(255)  # 1x3072
 
-            l1 = nonlin(np.dot(l0, synapse_0))  # 1x3072 * 3072x32 = 1x32
-            l2 = nonlin(np.dot(l1, synapse_1))  # 1x32 * 32x10 = 1x10
+            l1 = nonlin(np.dot(l0, synapse_0))  # 1x3072 * 3072x1024 = 1x1024
+            l2 = nonlin(np.dot(l1, synapse_1))  # 1x1024 * 1024x10 = 1x10
 
             l2_error = y_local - l2  # 1x10 - 1x10
 
             error = np.mean(np.abs(l2_error))
             errors[i] = error
-            print "Epoch " + str(i) + ". Picture " + str(j) + ". Error = " + str(error)
+            print "Epoch " + str(i) + ". Batch " + str(batch_number) + ". Picture " + str(j) + ". Error = " + str(error)
 
             l2_delta = l2_error * nonlin(l2, deriv=True)  # 1x10 * 1x10
 
-            l1_error = l2_delta.dot(synapse_1.T)  # 1x10 * 10x32 = 1x32
+            l1_error = l2_delta.dot(synapse_1.T)  # 1x10 * 10x1024 = 1x1024
 
-            l1_delta = l1_error * nonlin(l1, deriv=True)  # 1x32 * 1x32
+            l1_delta = l1_error * nonlin(l1, deriv=True)  # 1x1024 * 1x1024
 
-            grad_1 = l1.T.dot(l2_delta)  # 32x1 * 1x10 = 32x10
-            grad_0 = l0.T.dot(l1_delta)  # 3072x1 * 1x32 = 3072x32
+            grad_1 = l1.T.dot(l2_delta)  # 1024x1 * 1x10 = 1024x10
+            grad_0 = l0.T.dot(l1_delta)  # 3072x1 * 1x1024 = 3072x1024
 
             synapse_1_delta_batch += E * grad_1 + alpha * prev_synapse_1_delta
             synapse_0_delta_batch += E * grad_0 + alpha * prev_synapse_0_delta
@@ -99,8 +99,8 @@ for i in xrange(epoch_count):
         prev_synapse_1_delta = synapse_1_delta_batch
         prev_synapse_0_delta = synapse_0_delta_batch
 
-        synapse_1_delta_batch = np.zeros((32, 10))
-        synapse_0_delta_batch = np.zeros((3072, 32))
+        synapse_1_delta_batch = np.zeros((1024, 10))
+        synapse_0_delta_batch = np.zeros((3072, 1024))
 
     plt.plot(errors)
     plt.show()
