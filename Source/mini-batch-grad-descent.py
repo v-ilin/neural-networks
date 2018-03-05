@@ -33,6 +33,7 @@ date = datetime.datetime.now().strftime("%m.%d.%y-%H.%M.%S")
 def get_mini_batch_indexes(batch_indexes, size, skip_count):
     return batch_indexes[skip_count:skip_count + size]
 
+
 def unpickle(file):
     import cPickle
     with open(file, 'rb') as fo:
