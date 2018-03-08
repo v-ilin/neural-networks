@@ -33,7 +33,13 @@ predictions = []
 
 for i, X in enumerate(test_batch['data']):
     l0 = np.array(X)[np.newaxis] / float(255)  # 1x3072
+    l0 = np.append(l0, 1)  # add one bias
+    l0 = np.array(l0)[np.newaxis]
+
     l1 = activation_func(np.dot(l0, synapse_0))  # 1x3072 * 3072x1024 = 1x1024
+    l1 = np.append(l1, 1)  # add one bias
+    l1 = np.array(l1)[np.newaxis]
+
     l2 = activation_func(np.dot(l1, synapse_1))  # 1x1024 * 1024x10 = 1x10
 
     y = test_batch['labels'][i]

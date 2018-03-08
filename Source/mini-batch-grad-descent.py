@@ -8,21 +8,21 @@ warnings.filterwarnings('error')
 batch_size = 64
 epoch_count = 50
 
-E = 0.1
-alpha = 0.001
+E = 0.5
+alpha = 0.25
 
 # np.random.seed(2)
 
-synapse_0 = 2 * np.random.random((3072, 1024)) - 1
-synapse_1 = 2 * np.random.random((1024, 10)) - 1
+synapse_0 = 2 * np.random.random((3073, 1024)) - 1
+synapse_1 = 2 * np.random.random((1025, 10)) - 1
 
-prev_synapse_0_delta = np.zeros((3072, 1024))
-prev_synapse_1_delta = np.zeros((1024, 10))
+prev_synapse_0_delta = np.zeros((3073, 1024))
+prev_synapse_1_delta = np.zeros((1025, 10))
 
 errors = []
 
-synapse_0_delta_batch = np.zeros((3072, 1024))
-synapse_1_delta_batch = np.zeros((1024, 10))
+synapse_0_delta_batch = np.zeros((3073, 1024))
+synapse_1_delta_batch = np.zeros((1025, 10))
 
 
 images_count_in_batch = 10000
@@ -56,7 +56,7 @@ def get_mini_batch_x(source_dict, mini_batch_indexes):
     x_mini_batch = np.zeros((len(mini_batch_indexes), 3072))
 
     for t, index in enumerate(mini_batch_indexes):
-        x_mini_batch[t] = (source_dict['data'][index])
+        x_mini_batch[t] = source_dict['data'][index]
 
     return x_mini_batch
 
@@ -108,9 +108,14 @@ for i in xrange(epoch_count):
 
             for j, X in enumerate(x_mini_batch):
                 y_local = y_mini_batch[j]  # 1x10
-                l0 = np.array(X)[np.newaxis]/float(255)  # 1x3072
+                l0_input = np.array(X)[np.newaxis] / float(255)  # 1x3072 , input normalization
+                l0_input = np.append(l0_input, 1)  # add one bias
+                l0_input = np.array(l0_input)[np.newaxis]
+                l0_sum = np.dot(l0_input, synapse_0)
 
-                l1 = activation_func(np.dot(l0, synapse_0))  # 1x3072 * 3072x1024 = 1x1024
+                l1 = activation_func(l0_sum)  # 1x3072 * 3072x1024 = 1x1024
+                l1 = np.append(l1, 1)  # add one bias
+                l1 = np.array(l1)[np.newaxis]
                 l2 = activation_func(np.dot(l1, synapse_1))  # 1x1024 * 1024x10 = 1x10
 
                 l2_error = y_local - l2  # 1x10 - 1x10
@@ -125,10 +130,13 @@ for i in xrange(epoch_count):
                 l1_delta = l1_error * activation_func(l1, deriv=True)  # 1x1024 * 1x1024
 
                 grad_1 = l1.T.dot(l2_delta)  # 1024x1 * 1x10 = 1024x10
-                grad_0 = l0.T.dot(l1_delta)  # 3072x1 * 1x1024 = 3072x1024
+                grad_0 = l0_input.T.dot(l1_delta)  # 3072x1 * 1x1024 = 3072x1024
 
                 synapse_1_delta_batch += E * grad_1 + alpha * prev_synapse_1_delta
-                synapse_0_delta_batch += E * grad_0 + alpha * prev_synapse_0_delta
+                synapse_0_delta_batch += E * grad_0[:, :-1] + alpha * prev_synapse_0_delta
+
+            synapse_1_delta_batch = synapse_1_delta_batch / batch_size
+            synapse_0_delta_batch = synapse_0_delta_batch / batch_size
 
             synapse_1 += synapse_1_delta_batch
             synapse_0 += synapse_0_delta_batch
@@ -136,8 +144,8 @@ for i in xrange(epoch_count):
             prev_synapse_1_delta = synapse_1_delta_batch
             prev_synapse_0_delta = synapse_0_delta_batch
 
-            synapse_1_delta_batch = np.zeros((1024, 10))
-            synapse_0_delta_batch = np.zeros((3072, 1024))
+            synapse_1_delta_batch = np.zeros((1025, 10))
+            synapse_0_delta_batch = np.zeros((3073, 1024))
 
             print "Epoch " + str(i).zfill(2) + ". " \
                   "Batch " + str(batch_number) + ". " \
