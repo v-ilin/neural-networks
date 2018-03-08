@@ -67,6 +67,7 @@ def activation_func(x, deriv=False):
     try:
         return 1 / (1 + np.exp(-x))
     except Warning as e:
+        dump_weights("error")
         raise e
 
 
