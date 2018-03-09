@@ -150,8 +150,7 @@ for i in xrange(epoch_count):
             print "Epoch " + str(i).zfill(2) + ". " \
                   "Batch " + str(batch_number) + ". " \
                   "Mini-batch " + str(mini_batch_number).zfill(3) + ". " \
-                  "Average mini-batch error = " + str(np.mean(errors[mini_batch_number * batch_size:mini_batch_number * batch_size + batch_size])).zfill(3) + ". " \
-                  "Average error = " + str(np.mean(errors)) + ". "
+                  "Average mini-batch error = " + str(np.mean(errors[mini_batch_number * batch_size:mini_batch_number * batch_size + batch_size])).zfill(3) + ". "
 
         dump_weights("epoch={}batch={}".format(i, batch_number))
 
