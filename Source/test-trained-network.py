@@ -21,26 +21,34 @@ def y_to_vector(y):
     return y_vector
 
 
-dumps_folder_name = "03.06.18-00.30.52"
+dumps_folder_name = "04.01.18-19.26.24"
 
-synapse_0 = unpickle("e:/dumps/{}/synapse_0_epoch=10batch=5mb=789mb_s=2.pkl".format(dumps_folder_name))
-synapse_1 = unpickle("e:/dumps/{}/synapse_1_epoch=10batch=5mb=789mb_s=2.pkl".format(dumps_folder_name))
+synapse_0 = unpickle("e:/dumps/{}/synapse_0_epoch=47.pkl".format(dumps_folder_name))
+synapse_1 = unpickle("e:/dumps/{}/synapse_1_epoch=47.pkl".format(dumps_folder_name))
 
 test_batch = unpickle("dataset/test_batch")
+
+biases_count = 1
 
 errors = []
 predictions = []
 
 for i, X in enumerate(test_batch['data']):
     l0 = np.array(X)[np.newaxis] / float(255)  # 1x3072
-    l0 = np.append(l0, 1)  # add one bias
-    l0 = np.array(l0)[np.newaxis]
 
-    l1 = activation_func(np.dot(l0, synapse_0))  # 1x3072 * 3072x1024 = 1x1024
-    l1 = np.append(l1, 1)  # add one bias
-    l1 = np.array(l1)[np.newaxis]
+    if biases_count != 0:
+        for _ in xrange(biases_count):
+            l0 = np.append(l0, 1)  # add one bias
+        l0 = np.array(l0)[np.newaxis]
 
-    l2 = activation_func(np.dot(l1, synapse_1))  # 1x1024 * 1024x10 = 1x10
+    l1 = activation_func(np.dot(l0, synapse_0))  # 1x3072 * 3072x50 = 1x50
+
+    if biases_count != 0:
+        for _ in xrange(biases_count):
+            l1 = np.append(l1, 1)  # add one bias
+        l1 = np.array(l1)[np.newaxis]
+
+    l2 = activation_func(np.dot(l1, synapse_1))  # 1x50 * 50x10 = 1x10
 
     y = test_batch['labels'][i]
     l2_error = y_to_vector(y) - l2  # 1x10 - 1x10
@@ -54,7 +62,7 @@ for i, X in enumerate(test_batch['data']):
     error = np.mean(np.abs(l2_error))
     errors.append(error)
 
-    print "Image {}. Error = {}. Average error = {}".format(i, error, np.mean(errors))
+    print "Image {}. Prediction = {}. Answer = {}. Error = {}. Average error = {}.".format(i, prediction, y, error, np.mean(errors))
 
 print "Right predictions count = {} of 10000".format(np.count_nonzero(predictions))
 

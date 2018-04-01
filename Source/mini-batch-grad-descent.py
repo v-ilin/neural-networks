@@ -1,29 +1,31 @@
-import warnings
 import datetime
 import numpy as np
 
-np.seterr(all='warn')
-warnings.filterwarnings('error')
 
-biases_count = 100
-mini_batch_size = 64
-epoch_count = 50
+def unpickle(file):
+    import cPickle
+    with open(file, 'rb') as fo:
+        dict = cPickle.load(fo)
+    return dict
 
-E = 0.5
-alpha = 0.25
+
+biases_count = 1
+mini_batch_size = 32
+epoch_count = 100
+
+E = 0.3
+alpha = 0.1
 
 # np.random.seed(2)
 
-synapse_0 = 2 * np.random.random((3072 + biases_count, 1024)) - 1
-synapse_1 = 2 * np.random.random((1024 + biases_count, 10)) - 1
+synapse_0 = 2 * np.random.random((3072 + biases_count, 50)) - 1
+synapse_1 = 2 * np.random.random((50 + biases_count, 10)) - 1
 
-prev_synapse_0_delta = np.zeros((3072 + biases_count, 1024))
-prev_synapse_1_delta = np.zeros((1024 + biases_count, 10))
+prev_synapse_0_delta = np.zeros((3072 + biases_count, 50))
+prev_synapse_1_delta = np.zeros((50 + biases_count, 10))
 
-errors = []
-
-synapse_0_delta_batch = np.zeros((3072 + biases_count, 1024))
-synapse_1_delta_batch = np.zeros((1024 + biases_count, 10))
+synapse_0_delta_batch = np.zeros((3072 + biases_count, 50))
+synapse_1_delta_batch = np.zeros((50 + biases_count, 10))
 
 
 batch_size = 10000
@@ -33,13 +35,6 @@ date = datetime.datetime.now().strftime("%m.%d.%y-%H.%M.%S")
 
 def get_mini_batch_indexes(batch_indexes, size, skip_count):
     return batch_indexes[skip_count:skip_count + size]
-
-
-def unpickle(file):
-    import cPickle
-    with open(file, 'rb') as fo:
-        dict = cPickle.load(fo)
-    return dict
 
 
 def get_mini_batch_y(source_dict, mini_batch_indexes):
@@ -96,6 +91,9 @@ dump_weights("initial")
 
 for i in xrange(epoch_count):
 
+    errors = []
+    predictions = []
+
     for batch_number in range(1, 6):
         batch = unpickle("dataset/data_batch_{}".format(batch_number))
         batch_indexes = np.arange(batch['data'].shape[0])
@@ -106,8 +104,6 @@ for i in xrange(epoch_count):
             mini_batch_indexes = get_mini_batch_indexes(batch_indexes, mini_batch_size, mini_batch_number * mini_batch_size)
             x_mini_batch = get_mini_batch_x(batch, mini_batch_indexes)  # mini_batch_size x 3072
             y_mini_batch = get_mini_batch_y(batch, mini_batch_indexes)  # mini_batch_size x 10
-
-            predictions = []
 
             for j, X in enumerate(x_mini_batch):
                 y_local = y_mini_batch[j]  # 1x10
@@ -120,28 +116,28 @@ for i in xrange(epoch_count):
 
                 l0_sum = np.dot(l0_input, synapse_0)
 
-                l1 = activation_func(l0_sum)  # 1x3072 * 3072x1024 = 1x1024
+                l1 = activation_func(l0_sum)  # 1x3072 * 3072x50 = 1x50
 
                 if biases_count != 0:
                     for _ in xrange(biases_count):
                         l1 = np.append(l1, 1)
                     l1 = np.array(l1)[np.newaxis]
 
-                l2 = activation_func(np.dot(l1, synapse_1))  # 1x1024 * 1024x10 = 1x10
+                l2 = activation_func(np.dot(l1, synapse_1))  # 1x50 * 50x10 = 1x10
 
                 l2_error = y_local - l2  # 1x10 - 1x10
 
-                error = np.mean(np.abs(l2_error))
-                errors.append(error)
+                error_mse = np.mean(np.abs(np.power(l2_error, 2)))
+                errors.append(error_mse)
 
                 l2_delta = l2_error * activation_func(l2, deriv=True)  # 1x10 * 1x10
 
-                l1_error = l2_delta.dot(synapse_1.T)  # 1x10 * 10x1024 = 1x1024
+                l1_error = l2_delta.dot(synapse_1.T)  # 1x10 * 10x50 = 1x50
 
-                l1_delta = l1_error * activation_func(l1, deriv=True)  # 1x1024 * 1x1024
+                l1_delta = l1_error * activation_func(l1, deriv=True)  # 1x50 * 1x50
 
-                grad_1 = l1.T.dot(l2_delta)  # 1024x1 * 1x10 = 1024x10
-                grad_0 = l0_input.T.dot(l1_delta)  # 3072x1 * 1x1024 = 3072x1024
+                grad_1 = l1.T.dot(l2_delta)  # 50x1 * 1x10 = 50x10
+                grad_0 = l0_input.T.dot(l1_delta)  # 3072x1 * 1x50 = 3072x50
 
                 synapse_1_delta_batch += E * grad_1 + alpha * prev_synapse_1_delta
 
@@ -165,18 +161,14 @@ for i in xrange(epoch_count):
             prev_synapse_1_delta = synapse_1_delta_batch
             prev_synapse_0_delta = synapse_0_delta_batch
 
-            synapse_1_delta_batch = np.zeros((1024 + biases_count, 10))
-            synapse_0_delta_batch = np.zeros((3072 + biases_count, 1024))
+            synapse_1_delta_batch = np.zeros((50 + biases_count, 10))
+            synapse_0_delta_batch = np.zeros((3072 + biases_count, 50))
 
-            print "Epoch " + str(i).zfill(2) + ". " \
-                  "Batch " + str(batch_number) + ". " \
-                  "Mini-batch " + str(mini_batch_number).zfill(3) + ". " \
-                  "Average mini-batch error = " + str(np.mean(errors[mini_batch_number * mini_batch_size:mini_batch_number * mini_batch_size + mini_batch_size])).zfill(3) + ". " \
-                  "Success predictions = {}".format(np.count_nonzero(predictions))
-
-        dump_weights("epoch={}batch={}".format(i, batch_number))
+    print "Epoch " + str(i).zfill(2) + ". " \
+          "Error = " + str(np.mean(errors)).zfill(3) + ". " \
+          "Success predictions = {}".format(np.count_nonzero(predictions))
+    errors = []
+    predictions = []
+        # dump_weights("epoch={}batch={}".format(i, batch_number))
 
     dump_weights("epoch={}".format(i))
-
-    # plt.plot(errors)
-    # plt.show()
