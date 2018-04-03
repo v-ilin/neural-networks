@@ -13,8 +13,8 @@ biases_count = 1
 mini_batch_size = 32
 epoch_count = 100
 
-E = 0.3
-alpha = 0.1
+E = 0.6
+momentum = 0.5
 
 # np.random.seed(2)
 
@@ -71,7 +71,8 @@ def dump_weights(postfix):
     import os
     import cPickle
 
-    directory_name = "e:/dumps/{}".format(date)
+    directory_name = "e:/dumps/{}_E={}_Momentum={}".format(date, E, momentum)
+
     if not os.path.exists(directory_name):
         os.makedirs(directory_name)
 
@@ -139,12 +140,12 @@ for i in xrange(epoch_count):
                 grad_1 = l1.T.dot(l2_delta)  # 50x1 * 1x10 = 50x10
                 grad_0 = l0_input.T.dot(l1_delta)  # 3072x1 * 1x50 = 3072x50
 
-                synapse_1_delta_batch += E * grad_1 + alpha * prev_synapse_1_delta
+                synapse_1_delta_batch += E * grad_1 + momentum * prev_synapse_1_delta
 
                 if biases_count != 0:
-                    synapse_0_delta_batch += E * grad_0[:, :-biases_count] + alpha * prev_synapse_0_delta
+                    synapse_0_delta_batch += E * grad_0[:, :-biases_count] + momentum * prev_synapse_0_delta
                 else:
-                    synapse_0_delta_batch += E * grad_0 + alpha * prev_synapse_0_delta
+                    synapse_0_delta_batch += E * grad_0 + momentum * prev_synapse_0_delta
 
                 prediction = np.argmax(l2)
                 if prediction == np.nonzero(y_local)[0]:
