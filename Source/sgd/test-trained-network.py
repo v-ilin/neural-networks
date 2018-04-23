@@ -21,10 +21,10 @@ def y_to_vector(y):
     return y_vector
 
 
-dumps_folder_name = "04.03.18-14.58.21"
+dumps_folder_name = "04.03.18-23.46.22_E=0.6_Momentum=0.5"
 
-synapse_0 = unpickle("e:/dumps/{}/synapse_0_epoch=99.pkl".format(dumps_folder_name))
-synapse_1 = unpickle("e:/dumps/{}/synapse_1_epoch=99.pkl".format(dumps_folder_name))
+synapse_0 = unpickle("e:/dumps/{}/synapse_0_epoch=159.pkl".format(dumps_folder_name))
+synapse_1 = unpickle("e:/dumps/{}/synapse_1_epoch=159.pkl".format(dumps_folder_name))
 
 test_batch = unpickle("dataset/test_batch")
 
