@@ -1,4 +1,5 @@
-Source/dataset/*
+Source/sgd/dataset/*
+Source/binary_classifier/dataset/*
 
 # Created by https://www.gitignore.io/api/linux,macos,python,windows,pycharm,visualstudio,visualstudiocode
 
