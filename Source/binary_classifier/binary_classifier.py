@@ -1,9 +1,10 @@
 import csv
 import copy
+import numpy as np
 from numpy import array
 
-from sklearn import linear_model
-from sklearn.model_selection import train_test_split
+from sklearn import linear_model, model_selection
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import Imputer, LabelEncoder
 
 string_features_indices = [1, 3, 5, 6, 7, 8, 9, 13]
@@ -59,16 +60,28 @@ def get_source_data():
 
 
 X, y = get_source_data()
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
 
-X_train_floats = replace_strings(X_train)
-X_test_floats = replace_strings(X_test)
+X_train = replace_strings(X)
 
-y_train_floats = array(y_train).astype(float)
-y_test_floats = array(y_test).astype(float)
+y_train = array(y).astype(float)
 
-sgd_classifier = linear_model.SGDClassifier()
-sgd_classifier.fit(X_train_floats, y_train_floats)
-accuracy = sgd_classifier.score(X_test_floats, y_test_floats)
+sgd_classifier = linear_model.SGDClassifier(random_state=0)
 
-print(str(accuracy))
+parameters_grid = {
+    'loss':[
+        'hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron',
+        'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'
+    ],
+    'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+    'alpha': np.linspace(0.0001, 0.001, num=10),
+    'max_iter': range(5, 10)
+}
+
+cv = model_selection.StratifiedShuffleSplit(n_splits=15, test_size=0.2, random_state=0)
+cv.get_n_splits(X_train, y_train)
+
+grid_cv = GridSearchCV(sgd_classifier, parameters_grid, scoring='accuracy', cv = cv)
+grid_cv.fit(X_train, y_train)
+
+print(str(grid_cv.best_estimator_))
+print(str(grid_cv.best_score_))
