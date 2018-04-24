@@ -3,30 +3,35 @@ import numpy as np
 
 
 def unpickle(file):
-    import cPickle
+    import _pickle as cPickle
     with open(file, 'rb') as fo:
-        dict = cPickle.load(fo)
+        dict = cPickle.load(fo, encoding='latin1')
     return dict
 
 
-biases_count = 1
-mini_batch_size = 32
-epoch_count = 100
+biases_count = 32
+mini_batch_size = 1
+epoch_count = 200
 
-E = 0.6
-momentum = 0.5
+E = 0.1
+momentum = 0
 
 # np.random.seed(2)
 
 synapse_0 = 2 * np.random.random((3072 + biases_count, 50)) - 1
 synapse_1 = 2 * np.random.random((50 + biases_count, 10)) - 1
 
-prev_synapse_0_delta = np.zeros((3072 + biases_count, 50))
-prev_synapse_1_delta = np.zeros((50 + biases_count, 10))
+prev_synapse_0 = synapse_0
+prev_synapse_1 = synapse_1
+
+# prev_synapse_0 = np.zeros((3072 + biases_count, 50))
+# prev_synapse_1 = np.zeros((50 + biases_count, 10))
 
 synapse_0_delta_batch = np.zeros((3072 + biases_count, 50))
 synapse_1_delta_batch = np.zeros((50 + biases_count, 10))
 
+Gt0 = np.zeros((3072 + biases_count, 50 + biases_count))
+Gt1 = np.zeros((50 + biases_count, 10))
 
 batch_size = 10000
 
@@ -69,7 +74,7 @@ def activation_func(x, deriv=False):
 
 def dump_weights(postfix):
     import os
-    import cPickle
+    import _pickle as cPickle
 
     directory_name = "e:/dumps/{}_E={}_Momentum={}".format(date, E, momentum)
 
@@ -90,7 +95,7 @@ def dump_weights(postfix):
 
 dump_weights("initial")
 
-for i in xrange(epoch_count):
+for i in range(epoch_count):
 
     errors = []
     predictions = []
@@ -100,7 +105,7 @@ for i in xrange(epoch_count):
         batch_indexes = np.arange(batch['data'].shape[0])
         np.random.shuffle(batch_indexes)
 
-        for mini_batch_number in range(0, batch_size / mini_batch_size):
+        for mini_batch_number in range(0, int(batch_size / mini_batch_size)):
 
             mini_batch_indexes = get_mini_batch_indexes(batch_indexes, mini_batch_size, mini_batch_number * mini_batch_size)
             x_mini_batch = get_mini_batch_x(batch, mini_batch_indexes)  # mini_batch_size x 3072
@@ -111,7 +116,7 @@ for i in xrange(epoch_count):
                 l0_input = np.array(X)[np.newaxis] / float(255)  # 1x3072 , input normalization
 
                 if biases_count != 0:
-                    for _ in xrange(biases_count):
+                    for _ in range(biases_count):
                         l0_input = np.append(l0_input, 1)
                     l0_input = np.array(l0_input)[np.newaxis]
 
@@ -120,7 +125,7 @@ for i in xrange(epoch_count):
                 l1 = activation_func(l0_sum)  # 1x3072 * 3072x50 = 1x50
 
                 if biases_count != 0:
-                    for _ in xrange(biases_count):
+                    for _ in range(biases_count):
                         l1 = np.append(l1, 1)
                     l1 = np.array(l1)[np.newaxis]
 
@@ -140,12 +145,17 @@ for i in xrange(epoch_count):
                 grad_1 = l1.T.dot(l2_delta)  # 50x1 * 1x10 = 50x10
                 grad_0 = l0_input.T.dot(l1_delta)  # 3072x1 * 1x50 = 3072x50
 
-                synapse_1_delta_batch += E * grad_1 + momentum * prev_synapse_1_delta
+                Gt1 = Gt1 + np.float_power(grad_1, 2)
+                Gt0 = Gt0 + np.float_power(grad_0, 2)
+                # synapse_1_delta_batch += E * grad_1 + momentum * prev_synapse_1_delta
+                synapse_1_delta_batch += prev_synapse_1 - (np.divide(E, np.sqrt(Gt1 + 0.000001))) * grad_1
 
                 if biases_count != 0:
-                    synapse_0_delta_batch += E * grad_0[:, :-biases_count] + momentum * prev_synapse_0_delta
+                    # synapse_0_delta_batch += E * grad_0[:, :-biases_count] + momentum * prev_synapse_0_delta
+                    synapse_0_delta_batch += prev_synapse_0 - (np.divide(E, np.sqrt(Gt0[:, :-biases_count] + 0.000001))) * grad_0[:, :-biases_count]
                 else:
-                    synapse_0_delta_batch += E * grad_0 + momentum * prev_synapse_0_delta
+                    # synapse_0_delta_batch += E * grad_0 + momentum * prev_synapse_0_delta
+                    synapse_0_delta_batch += prev_synapse_0 - (E / np.sqrt(Gt0 + 0.000001)) * grad_0
 
                 prediction = np.argmax(l2)
                 if prediction == np.nonzero(y_local)[0]:
@@ -156,18 +166,20 @@ for i in xrange(epoch_count):
             synapse_1_delta_batch = synapse_1_delta_batch / mini_batch_size
             synapse_0_delta_batch = synapse_0_delta_batch / mini_batch_size
 
+            prev_synapse_1 = synapse_1
+            prev_synapse_0 = synapse_0
+
             synapse_1 += synapse_1_delta_batch
             synapse_0 += synapse_0_delta_batch
 
-            prev_synapse_1_delta = synapse_1_delta_batch
-            prev_synapse_0_delta = synapse_0_delta_batch
-
             synapse_1_delta_batch = np.zeros((50 + biases_count, 10))
             synapse_0_delta_batch = np.zeros((3072 + biases_count, 50))
+            Gt0 = np.zeros((3072 + biases_count, 50 + biases_count))
+            Gt1 = np.zeros((50 + biases_count, 10))
 
-    print "Epoch " + str(i).zfill(2) + ". " \
+    print("Epoch " + str(i).zfill(2) + ". " \
           "Error = " + str(np.mean(errors)).zfill(3) + ". " \
-          "Success predictions = {}".format(np.count_nonzero(predictions))
+          "Success predictions = {}".format(np.count_nonzero(predictions)))
     errors = []
     predictions = []
         # dump_weights("epoch={}batch={}".format(i, batch_number))
