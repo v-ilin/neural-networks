@@ -1,5 +1,6 @@
 Source/sgd/dataset/*
 Source/binary_classifier/dataset/*
+Source/text_req_type/dataset/*
 
 # Created by https://www.gitignore.io/api/linux,macos,python,windows,pycharm,visualstudio,visualstudiocode
 
